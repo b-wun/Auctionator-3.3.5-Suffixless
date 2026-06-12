@@ -1,5 +1,5 @@
 
-local addonName, addonTable = ...; 
+local _, addonTable = ...;
 local zc = addonTable.zc;
 
 
@@ -17,7 +17,7 @@ local function Atr_RecipeKnown_EventScan (...)
 		if (Atr_IsTabSelected()) then
 			return;
 		end
-	
+
 		local numBatchAuctions = GetNumAuctionItems("list");
 		if (numBatchAuctions > 50) then		-- full scan
 			return;
@@ -36,7 +36,7 @@ local function Atr_LootLink_OnEvent (...)
 		if (Atr_IsTabSelected()) then
 			return;
 		end
-	
+
 		local numBatchAuctions = GetNumAuctionItems("list");
 		if (numBatchAuctions > 50) then		-- full scan
 			return;

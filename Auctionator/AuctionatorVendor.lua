@@ -1,4 +1,4 @@
-local addonName, addonTable = ...; 
+local _, addonTable = ...;
 local zc = addonTable.zc;
 
 -----------------------------------------
@@ -28,7 +28,7 @@ function Atr_GetBonding (itemID, vpstr)
 	local bonding = 0;		-- doesn't bind
 
 	local x = ((itemID-1) * 2) + 2;
-	
+
 	if (x <= string.len (vpstr)) then
 
 		local s = string.sub (vpstr, x, x);
@@ -51,10 +51,10 @@ function Atr_DEReqLevel (itemID, vpstr)
 		vpstr = gAtr_MI;
 	end
 
-	local reqlevel = 0;	
+	local reqlevel = 0;
 
 	local x = ((itemID-1) * 2) + 1;
-	
+
 	if (x <= string.len (vpstr)) then
 
 		local s = string.sub (vpstr, x, x);

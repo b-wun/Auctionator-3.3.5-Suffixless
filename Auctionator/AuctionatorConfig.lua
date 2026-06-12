@@ -1,5 +1,5 @@
 
-local addonName, addonTable = ...; 
+local _, addonTable = ...;
 local zc = addonTable.zc;
 
 -----------------------------------------
@@ -11,15 +11,15 @@ function Atr_LoadOptionsSubPanel (f, name, title, subtitle)
 	f.cancel	= Atr_Options_Cancel;
 
 	local frameName = f:GetName();
-	
+
 	f.okay   = _G[frameName.."_Save"];
 
 	if (title    == nil) then title = name; end
 	if (subtitle == nil) then subtitle = ""; end
-	
+
 	_G[frameName.."_ATitle"]:SetText (title);
 	_G[frameName.."_BTitle"]:SetText (subtitle);
-	
+
 	InterfaceOptions_AddCategory (f);
 
 end
@@ -110,7 +110,7 @@ function Atr_BasicOptionsFrame_Save()
 	if (origValues ~= newValues) then
 		zc.msg_atr (ZT ("basic options saved"));
 	end
-	
+
 	Atr_ShowHide_StartingPrice();
 end
 
@@ -144,7 +144,7 @@ function Atr_SetupTooltipsOptionsFrame ()
 
 	UIDropDownMenu_Initialize(Atr_tipsShiftDD, Atr_tipsShiftDD_Initialize);
 	UIDropDownMenu_SetSelectedValue(Atr_tipsShiftDD, AUCTIONATOR_SHIFT_TIPS);
-	
+
 	UIDropDownMenu_Initialize(Atr_deDetailsDD, Atr_deDetailsDD_Initialize);
 	UIDropDownMenu_SetSelectedValue(Atr_deDetailsDD, AUCTIONATOR_DE_DETAILS_TIPS);
 end
@@ -178,7 +178,7 @@ end
 function AuctionatorOption_Deftab_Initialize(self)
 
 	local info = UIDropDownMenu_CreateInfo();
-	
+
 	Atr_AddMenuPick (self, info, ZT("None"),	0, AuctionatorOption_Deftab_OnClick);
 	Atr_AddMenuPick (self, info, ZT("Sell"),	1, AuctionatorOption_Deftab_OnClick);
 	Atr_AddMenuPick (self, info, ZT("Buy"),		2, AuctionatorOption_Deftab_OnClick);
@@ -200,7 +200,7 @@ end
 function Atr_tipsShiftDD_Initialize(self)
 
 	local info = UIDropDownMenu_CreateInfo();
-	
+
 	Atr_AddMenuPick (self, info, ZT("stack price"),		1, Atr_tipsShiftDD_OnClick);
 	Atr_AddMenuPick (self, info, ZT("per item price"),	2, Atr_tipsShiftDD_OnClick);
 
@@ -217,7 +217,7 @@ end
 function Atr_deDetailsDD_Initialize(self)
 
 	local info = UIDropDownMenu_CreateInfo();
-	
+
 	Atr_AddMenuPick (self, info, ZT("when SHIFT is held down"),	1, Atr_deDetailsDD_OnClick);
 	Atr_AddMenuPick (self, info, ZT("when CONTROL is held down"),	2, Atr_deDetailsDD_OnClick);
 	Atr_AddMenuPick (self, info, ZT("when ALT is held down"),		3, Atr_deDetailsDD_OnClick);
@@ -258,7 +258,7 @@ kThresh[4] = { amt=50000,		text=ZT("over %d gold"),		v=5		};
 kThresh[5] = { amt=10000,		text=ZT("over 1 gold"),			v=1		};
 kThresh[6] = { amt=2000,		text=ZT("over %d silver"),		v=20	};
 kThresh[7] = { amt=500,			text=ZT("over %d silver"),		v=5		};
-                 
+
 -----------------------------------------
 
 function Atr_SetupUCConfigFrame()
@@ -290,11 +290,11 @@ function Atr_UCConfigFrame_Save()
 
 	for i = 1, #kThresh do
 		local amt = kThresh[i].amt;
-	
+
 		origValues = origValues + AUCTIONATOR_SAVEDVARS["_"..amt];
-		
+
 		AUCTIONATOR_SAVEDVARS["_"..amt]	= MoneyInputFrame_GetCopper(_G["UC_"..amt.."_MoneyInput"]);
-		
+
 		newValues = newValues + AUCTIONATOR_SAVEDVARS["_"..amt];
 	end
 
@@ -343,7 +343,7 @@ kStackList_categories[ATR_SK_HERBS]			= { txt=ZT("Herbs")	}
 function Atr_SetupStackingFrame ()
 
 	if (_G["Atr_StackList1"] == nil) then
-		local line, n;
+		local line;
 
 		for n = 1, kStackList_LinesToDisplay do
 			local y = -5 - ((n-1)*16);
@@ -351,7 +351,7 @@ function Atr_SetupStackingFrame ()
 			line:SetPoint("TOP", 0, y);
 		end
 	end
-	
+
 	Atr_StackingList_Display();
 
 end
@@ -363,11 +363,9 @@ function Atr_StackingList_Display()
 	gStackList_plist = {};
 
 	local plist = gStackList_plist;
-	local text, spinfo;
-	local sortkey, info;
 	local n = 1;
-	
-	for sortkey, info in pairs (kStackList_categories) do
+
+	for _, info in pairs (kStackList_categories) do
 		info.overrideFound = false;
 	end
 
@@ -382,7 +380,7 @@ function Atr_StackingList_Display()
 
 		if (spinfo.numstacks ~= 0) then
 			local sortkey = text;
-			
+
 			if (kStackList_categories[text]) then
 				kStackList_categories[text].overrideFound = true;
 				text = kStackList_categories[text].txt;
@@ -392,19 +390,18 @@ function Atr_StackingList_Display()
 			n = n + 1;
 		end
 	end
-	
+
 	for sortkey, info in pairs (kStackList_categories) do
 		if (not info.overrideFound) then
-			plist[n] = plistEntry (sortkey, info.txt, -2, 0);			
+			plist[n] = plistEntry (sortkey, info.txt, -2, 0);
 			n = n + 1;
 		end
 	end
-	
+
 	table.sort (plist, plistSort)
-	
+
 	local totalRows = #plist;
 
-	local line;							-- 1 through NN of our window to scroll
 	local dataOffset;					-- an index into our data calculated from the scroll offset
 
 	FauxScrollFrame_Update (Atr_Stacking_ScrollFrame, totalRows, kStackList_LinesToDisplay, 16);
@@ -423,30 +420,30 @@ function Atr_StackingList_Display()
 			local lineEntry_info = _G["Atr_StackList"..line.."_info"];
 
 			local pdata = plist[dataOffset];
-			
+
 			local colorText = ((pdata.text == pdata.sortkey) and "" or "|cffffff88");
-			
+
 			lineEntry_text:SetText (colorText..pdata.text);
 
 			local numstacks = plist[dataOffset].numstacks;
 			local stacksize = plist[dataOffset].stacksize;
 			local info = "???";
-			
-			if     (numstacks == -2) then	info = "|cff777777"..ZT("default behavior");														
-			elseif (numstacks == -1) then	info = string.format (ZT("max. stacks of %d"), stacksize);		
-			elseif (stacksize == 0)  then	info = "1 "..ZT("stack");	
-			elseif (numstacks == 0)  then	info = ZT("stacks of").." "..stacksize;	
-			elseif (numstacks > 0)   then	info = numstacks.." "..ZT("stacks of").." "..stacksize;	
+
+			if     (numstacks == -2) then	info = "|cff777777"..ZT("default behavior");
+			elseif (numstacks == -1) then	info = string.format (ZT("max. stacks of %d"), stacksize);
+			elseif (stacksize == 0)  then	info = "1 "..ZT("stack");
+			elseif (numstacks == 0)  then	info = ZT("stacks of").." "..stacksize;
+			elseif (numstacks > 0)   then	info = numstacks.." "..ZT("stacks of").." "..stacksize;
 			end
-				
+
 			lineEntry_info:SetText (info);
-			
+
 			if (gStackList_SelectedIndex == dataOffset) then
 				lineEntry:SetButtonState ("PUSHED", true);
 			else
 				lineEntry:SetButtonState ("NORMAL", false);
 			end
-			
+
 			lineEntry:Show();
 		else
 			lineEntry:Hide();
@@ -486,36 +483,36 @@ function Atr_Memorize_Show (isNew)
 	zc.ShowHide (Atr_Mem_Forget,		   	not isNew);
 
 	Atr_MemorizeFrame["isCategory"] = false;
-	
+
 	if (not isNew) then
 		local x		= gStackList_SelectedIndex;
 		local plist	= gStackList_plist;
-		
+
 		Atr_Mem_itemName_static:SetText (plist[x].text);
-		
+
 		stackSize = plist[x].stacksize
 		numStacks = plist[x].numstacks
 
 		local isCategory = (plist[x].sortkey ~= plist[x].text);
 
 		Atr_MemorizeFrame["isCategory"] = isCategory;
-		
+
 		if (isCategory and numStacks == -2) then
 			numStacks = -1;
 			stackSize = 1;
 		end
-		
+
 		zc.SetTextIf (Atr_Mem_itemName_text, isCategory, ZT("Category"), ZT("Item Name"));
 		zc.SetTextIf (Atr_Mem_Forget,		 isCategory, ZT("Reset to Default"), ZT("Forget this Item"));
 	end
-		
+
 	Atr_Mem_EB_stackSize:SetText (stackSize);
 
 	UIDropDownMenu_Initialize		(Atr_Mem_DD_numStacks, Atr_SONumStacks_Initialize);
 	UIDropDownMenu_SetSelectedValue	(Atr_Mem_DD_numStacks, numStacks);
 
 	Atr_Mem_EB_itemName:SetText ("");
-	
+
 	ShowInterfaceOptionsMask();
 
 	Atr_MemorizeFrame:Show();
@@ -549,14 +546,14 @@ function Atr_Memorize_Save()
 	if (key == nil or key == "") then
 		key = plist[x].sortkey;
 	end
-	
+
 	if (key and key ~= "") then
 		Atr_Set_StackingPrefs_numstacks (key, UIDropDownMenu_GetSelectedValue (Atr_Mem_DD_numStacks));
 		Atr_Set_StackingPrefs_stacksize (key, Atr_Mem_EB_stackSize:GetNumber ());
 	end
 
 	Atr_StackingList_Display();
-	
+
 end
 
 -----------------------------------------
@@ -604,7 +601,7 @@ function Atr_SONumStacks_Initialize(self)
 	Atr_AddMenuPick (self, info, "4",								 4,  Atr_SONumStacks_OnClick)
 	Atr_AddMenuPick (self, info, "5",								 5,  Atr_SONumStacks_OnClick)
 	Atr_AddMenuPick (self, info, "10",							10,  Atr_SONumStacks_OnClick)
-                                            
+
 end
 
 -----------------------------------------
@@ -646,15 +643,15 @@ function Atr_ShowOptionTooltip (elem)
 
 	if (text) then
 		local titleFrame = _G[name.."_CB_Text"] or _G[name.."_Text"];
-		
+
 		local titleText = titleFrame and titleFrame:GetText() or "???";
-		
+
 		GameTooltip:SetOwner(elem, "ANCHOR_LEFT");
 		GameTooltip:SetText(titleText, 0.9, 1.0, 1.0);
 		GameTooltip:AddLine(text, 0.5, 0.5, 1.0, 1);
 		GameTooltip:Show();
 	end
-	
+
 end
 
 -----------------------------------------
@@ -678,7 +675,7 @@ function Atr_ScanningOptionsFrame_Save()
 	if (origValues ~= newValues) then
 		zc.msg_atr (ZT("scanning options saved"));
 	end
-	
+
 end
 
 -----------------------------------------
@@ -686,7 +683,7 @@ end
 function Atr_scanLevelDD_Initialize(self)
 
 	local info = UIDropDownMenu_CreateInfo();
-	
+
 	Atr_AddMenuPick (self, info, "|cffa335ee"..ZT("Epic").."|r",			5, Atr_scanLevelDD_OnClick);
 	Atr_AddMenuPick (self, info, "|cff0070dd"..ZT("Rare").."|r",			4, Atr_scanLevelDD_OnClick);
 	Atr_AddMenuPick (self, info, "|cff1eff00"..ZT("Uncommon").."|r",		3, Atr_scanLevelDD_OnClick);
@@ -718,12 +715,12 @@ end
 function Atr_MakeOptionsFrameOpaque ()
 
 	local bd = { bgFile="Interface/RAIDFRAME/UI-RaidFrame-GroupBg",
-				 edgeFile="Interface/DialogFrame/UI-DialogBox-Border", 
+				 edgeFile="Interface/DialogFrame/UI-DialogBox-Border",
 				 tile=false, edgeSize=32,
 				 insets={left=11,right=11,top=10,bottom=10}
 				};
-	
-	local list_bd = { 
+
+	local list_bd = {
 					bgFile="Interface/CharacterFrame/UI-Party-Background",
 					tile=true,
 					insets={left=5,right=5,top=5,bottom=5}
@@ -746,9 +743,9 @@ function ShowInterfaceOptionsMask()
 		gInterfaceOptionsMask = CreateFrame ("Frame", "Atr_Mask_StdOptions", _G["InterfaceOptionsFrame"], "Atr_Mask_StdOptionsTempl");
 		gInterfaceOptionsMask:SetFrameLevel (129);
 	end
-	
+
 	gInterfaceOptionsMask:Show();
-	
+
 end
 
 -----------------------------------------

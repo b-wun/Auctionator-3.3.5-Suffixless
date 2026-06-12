@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Create GitHub Release with addon .zip
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read addon version from .toc
+        id: version
+        run: |
+          VERSION=$(awk '/^## Version:/ {print $3; exit}' Auctionator/Auctionator.toc | tr -d '\r')
+          if [ -z "${VERSION}" ]; then
+            echo "Error: Failed to parse addon version from Auctionator/Auctionator.toc" >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Lua 5.1
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1"
+
+      - name: Set up LuaRocks
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Install test dependencies
+        run: |
+          luarocks install busted
+          luarocks install luabitop
+
+      - name: Run all tests before releasing
+        run: |
+          busted --verbose --pattern="_spec" \
+            tests/spec/zcUtils_spec.lua \
+            tests/spec/query_spec.lua \
+            tests/spec/e2e_spec.lua
+
+      - name: Package addon folder into zip
+        run: |
+          zip -r "Auctionator-${{ steps.version.outputs.version }}.zip" Auctionator/
+
+      - name: Create GitHub Release and upload zip
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Auctionator ${{ steps.version.outputs.version }}"
+          body: |
+            ## Auctionator ${{ steps.version.outputs.version }}
+
+            ### Installation
+            1. Download `Auctionator-${{ steps.version.outputs.version }}.zip`
+            2. Extract the `Auctionator` folder into `Interface/AddOns/`
+
+            See the [README](https://github.com/${{ github.repository }}#readme) for full usage instructions.
+          files: "Auctionator-${{ steps.version.outputs.version }}.zip"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

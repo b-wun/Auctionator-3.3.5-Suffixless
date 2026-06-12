@@ -1,5 +1,5 @@
 
-local addonName, addonTable = ...; 
+local _, addonTable = ...;
 local zc = addonTable.zc;
 
 -----------------------------------------
@@ -16,12 +16,11 @@ local gCurrentSList;
 function Atr_ShoppingListsInit ()
 
 	local num = #AUCTIONATOR_SHOPPING_LISTS;
-	local x;
-	
+
 	for x = 1,num do
 		setmetatable (AUCTIONATOR_SHOPPING_LISTS[x], Atr_SList);
 	end
-	
+
 end
 
 -----------------------------------------
@@ -33,16 +32,16 @@ function Atr_SList.create (name, isRecents)
 
 	slist.name		= name;
 	slist.items		= {};
-	
+
 	if (isRecents) then
 		slist.isRecents = 1;
 	end
-	
+
 	table.insert (AUCTIONATOR_SHOPPING_LISTS, slist);
 
 	table.sort (AUCTIONATOR_SHOPPING_LISTS, Atr_SortSlists);
 	Atr_DropDownSL_Initialize ();
-	
+
 	return slist;
 end
 
@@ -68,7 +67,7 @@ function Atr_SList:AddItem (itemName)
 
 	if (self.isRecents) then
 		table.insert (self.items, 1, itemName);
-		
+
 		while (#self.items > 50) do		-- max 50 items on recents list
 			table.remove (self.items);
 		end
@@ -77,7 +76,7 @@ function Atr_SList:AddItem (itemName)
 		self.isSorted = false;
 	end
 
-	
+
 end
 
 -----------------------------------------
@@ -85,8 +84,7 @@ end
 function Atr_SList:RemoveItem (itemName)
 
 	local num = #self.items;
-	local n;
-	
+
 	for n = 1,num do
 		if (zc.StringSame (self.items[n], itemName)) then
 			table.remove (self.items, n);
@@ -130,7 +128,6 @@ function Atr_SList:DisplayX ()
 
 	local numrows = #self.items;
 
-	local line;							-- 1 through NN of our window to scroll
 	local dataOffset;					-- an index into our data calculated from the scroll offset
 
 	FauxScrollFrame_Update (Atr_Hlist_ScrollFrame, numrows, SLITEMS_NUM_LINES, 16);
@@ -138,7 +135,7 @@ function Atr_SList:DisplayX ()
 	for line = 1,SLITEMS_NUM_LINES do
 
 		currentPane.hlistScrollOffset = FauxScrollFrame_GetOffset (Atr_Hlist_ScrollFrame);
-		
+
 		dataOffset = line + currentPane.hlistScrollOffset;
 
 		local lineEntry = _G["AuctionatorHEntry"..line];
@@ -146,7 +143,7 @@ function Atr_SList:DisplayX ()
 		lineEntry:SetID(dataOffset);
 
 		local slItem = self.items[dataOffset];
-		
+
 		if (dataOffset <= numrows and slItem) then
 
 			local lineEntry_text = _G["AuctionatorHEntry"..line.."_EntryText"];
@@ -176,14 +173,13 @@ end
 function Atr_SList:FindItemIndex (itemName)
 
 	local num = #self.items;
-	local n;
-	
+
 	for n = 1,num do
 		if (zc.StringSame (itemName, self.items[n])) then
 			return n;
 		end
 	end
-	
+
 	return 0;
 
 end
@@ -193,7 +189,7 @@ end
 function Atr_SList:IsItemOnList (itemName)
 
 	return (self:FindItemIndex(itemName) > 0);
-	
+
 end
 
 -----------------------------------------
@@ -224,9 +220,9 @@ function Atr_Search_Onclick ()
 	Atr_Buy1_Button:Disable();
 	Atr_AddToSListButton:Disable();
 	Atr_RemFromSListButton:Disable();
-	
+
 	Atr_ClearAll();
-	
+
 	currentPane:DoSearch (searchText);
 
 	Atr_Process_Historydata ();
@@ -235,34 +231,34 @@ end
 -----------------------------------------
 
 function Atr_Shop_OnFinishScan ()
-	
+
 	local currentPane = Atr_GetCurrentPane();
 
 	local searchText = currentPane.activeSearch.origSearchText;
 
 	Atr_Search_Box:SetText (searchText);
-	
+
 	local recentsList = AUCTIONATOR_SHOPPING_LISTS[1];
 	if (recentsList) then
 
 		local isRecentsShown = (gCurrentSList == recentsList);
-		
+
 		local n = recentsList:FindItemIndex(searchText);
 
 		if (n > 14 or (not isRecentsShown and n > 0)) then
 			table.remove (recentsList.items, n);
 		end
-		
+
 		n = recentsList:FindItemIndex(searchText);
-		
+
 		if (n == 0) then
 			recentsList:AddItem (searchText);
 		end
-		
+
 		if (isRecentsShown) then
 			FauxScrollFrame_SetOffset (Atr_Hlist_ScrollFrame, 0);
 		end
-		
+
 	end
 
 	if (#currentPane.activeScan.sortedData > 0) then
@@ -270,7 +266,7 @@ function Atr_Shop_OnFinishScan ()
 	end
 
 	currentPane.UINeedsUpdate = true;
-	
+
 	Atr_Search_Button:Enable();
 	Atr_Adv_Search_Button:Enable();
 end
@@ -291,12 +287,11 @@ function Atr_DropDownSL_Initialize(self)
 	local info = UIDropDownMenu_CreateInfo();
 
 	local num = #AUCTIONATOR_SHOPPING_LISTS;
-	local x;
-	
+
 	for x = 1,num do
-	
+
 		local slist = AUCTIONATOR_SHOPPING_LISTS[x];
-		
+
 		info.text = slist.name;
 		info.value = x;
 		info.func = Atr_DropDownSL_OnClick;
@@ -312,11 +307,11 @@ end
 -----------------------------------------
 
 function Atr_DropDownSL_OnClick(info)
-	
+
 	UIDropDownMenu_SetSelectedValue (info.owner, info.value);
-	
+
 	gCurrentSList = AUCTIONATOR_SHOPPING_LISTS[info.value];
-	
+
 	Atr_SetUINeedsUpdate();
 
 end
@@ -328,7 +323,7 @@ function Atr_SEntryOnClick (self)
 	local entryIndex	= self:GetID();
 
 	local itemName = gCurrentSList.items[entryIndex];
-	
+
 	Atr_Search_Box:SetText (itemName);
 
 	if (IsAltKeyDown()) then
@@ -337,7 +332,7 @@ function Atr_SEntryOnClick (self)
 	else
 		Atr_Search_Onclick ();
 	end
-	
+
 	Atr_Shop_UpdateUI();
 
 --	gCurrentSList:DisplayX();		-- for the highlight
@@ -352,8 +347,7 @@ local function FinishCreateNewSList(text)
 	local slist = Atr_SList.create(text);
 
 	local num = #AUCTIONATOR_SHOPPING_LISTS;
-	local n;
-	
+
 	for n = 1,num do
 		if (AUCTIONATOR_SHOPPING_LISTS[n] == slist) then
 			UIDropDownMenu_SetSelectedValue(Atr_DropDownSL, n);
@@ -363,7 +357,7 @@ local function FinishCreateNewSList(text)
 			break;
 		end
 	end
-	
+
 
 end
 
@@ -400,8 +394,7 @@ StaticPopupDialogs["ATR_DEL_SHOPPING_LIST"] = {
 	text = "",
 	button1 = YES,
 	button2 = NO,
-	OnAccept = function(self)
-		local x;
+	OnAccept = function(_)
 		for x = 1,#AUCTIONATOR_SHOPPING_LISTS do
 			if (AUCTIONATOR_SHOPPING_LISTS[x] == gCurrentSList) then
 				table.remove (AUCTIONATOR_SHOPPING_LISTS, x);
@@ -415,7 +408,7 @@ StaticPopupDialogs["ATR_DEL_SHOPPING_LIST"] = {
 	end,
 	OnShow = function(self)
 		local s = string.format (ZT("Really delete the shopping list %s ?"), ": \n\n"..gCurrentSList.name);
-		
+
 		self.text:SetText("\n"..s.."\n\n");
 	end,
 	timeout = 0,
@@ -431,7 +424,7 @@ function Atr_NewSlist_OnClick ()
 	StaticPopupDialogs["ATR_NEW_SHOPPING_LIST"].text = ZT("Name for your new shopping list");
 
 	StaticPopup_Show("ATR_NEW_SHOPPING_LIST");
-	
+
 end
 
 -----------------------------------------
@@ -439,7 +432,7 @@ end
 function Atr_DelSList_OnClick ()
 
 	StaticPopup_Show("ATR_DEL_SHOPPING_LIST");
-	
+
 end
 
 
@@ -448,14 +441,12 @@ end
 
 function Atr_AddToSListOnClick ()
 
-	local currentPane = Atr_GetCurrentPane();
-
 	if (gCurrentSList) then
 		if (#gCurrentSList.items >= 50) then
 			Atr_Error_Text:SetText (string.format (ZT("You may have no more than\n\n%d items on a shopping list."), 50));
 			Atr_Error_Frame.withMask = 1;
 			Atr_Error_Frame:Show ();
-		else		
+		else
 			gCurrentSList:AddItem (Atr_Search_Box:GetText());
 			Atr_SetUINeedsUpdate();
 		end
@@ -466,8 +457,6 @@ end
 -----------------------------------------
 
 function Atr_RemFromSListOnClick ()
-
-	local currentPane = Atr_GetCurrentPane();
 
 	if (gCurrentSList) then
 		gCurrentSList:RemoveItem (Atr_Search_Box:GetText());
@@ -487,14 +476,14 @@ function Atr_Shop_UpdateUI ()
 	Atr_AddToSListButton:Disable();
 	Atr_RemFromSListButton:Disable();
 	Atr_DelSListButton:Disable();
-	
+
 	if (gCurrentSList == nil) then
 		gCurrentSList = AUCTIONATOR_SHOPPING_LISTS[1];
 	end
 
 	if (gCurrentSList) then
 		gCurrentSList:DisplayX ();
-	
+
 		local iName = Atr_Search_Box:GetText();
 
 		if (gCurrentSList:IsItemOnList (iName)) then
@@ -502,19 +491,19 @@ function Atr_Shop_UpdateUI ()
 		elseif (iName ~= "" and iName ~= nil and gCurrentSList ~= AUCTIONATOR_SHOPPING_LISTS[1]) then		-- hack
 			Atr_AddToSListButton:Enable();
 		end
-		
+
 		if (gCurrentSList ~= AUCTIONATOR_SHOPPING_LISTS[1]) then
 			Atr_DelSListButton:Enable();
 		end
-		
+
 	end
-	
+
 	if (currentPane.activeSearch:NumScans() > 1 and not currentPane:IsScanEmpty()) then
 		Atr_Back_Button:Show();
 	else
 		Atr_Back_Button:Hide();
 	end
-	
+
 end
 
 
@@ -528,9 +517,9 @@ function Atr_Adv_Search_Onclick ()
 
 	if (Atr_IsCompoundSearch (searchText)) then
 		local queryString, itemClass, itemSubclass, minLevel, maxLevel = Atr_ParseCompoundSearch (searchText);
-		
+
 		Atr_AS_Searchtext:SetText (queryString);
-		
+
 		Atr_ASDD_Class_Initialize(Atr_ASDD_Class);
 		UIDropDownMenu_SetSelectedValue (Atr_ASDD_Class, itemClass);
 		Atr_ASDD_UpdateSubclassMenu();
@@ -538,7 +527,7 @@ function Atr_Adv_Search_Onclick ()
 
 		if (minLevel == nil) then minLevel = ""; end
 		if (maxLevel == nil) then maxLevel = ""; end
-		
+
 		Atr_AS_Minlevel:SetText (minLevel);
 		Atr_AS_Maxlevel:SetText (maxLevel);
 
@@ -564,17 +553,15 @@ end
 function Atr_ASDD_Class_Initialize (self)
 
 	local itemClasses = Atr_GetAuctionClasses();
-	local n;
-	
+
 	Atr_Dropdown_AddPick (Atr_ASDD_Subclass, "-------", 0);
 
 	if (#itemClasses > 0) then
-		local text;
 		for n, text in pairs(itemClasses) do
 			Atr_Dropdown_AddPick (self, text, n, Atr_ASDD_Class_OnClick);
 		end
 	end
-	
+
 end
 
 -----------------------------------------
@@ -611,7 +598,7 @@ end
 
 -----------------------------------------
 
-function Atr_ASDD_Subclass_Initialize (self)
+function Atr_ASDD_Subclass_Initialize (_)
 
 	local itemClass = UIDropDownMenu_GetSelectedValue (Atr_ASDD_Class);
 
@@ -620,17 +607,15 @@ function Atr_ASDD_Subclass_Initialize (self)
 	if (itemClass) then
 
 		local itemSubclasses = Atr_GetAuctionSubclasses(itemClass);
-		local n;
-		
+
 		if (#itemSubclasses > 0) then
-			local text;
 			for n, text in pairs(itemSubclasses) do
 
 				Atr_Dropdown_AddPick (Atr_ASDD_Subclass, text, n);
 			end
 		end
 	end
-	
+
 end
 
 
@@ -639,7 +624,7 @@ end
 function Atr_Adv_Search_Reset()
 
 	Atr_AS_Searchtext:SetText ("");
-	
+
 	UIDropDownMenu_SetSelectedValue (Atr_ASDD_Class, 0);
 	Atr_ASDD_UpdateSubclassMenu();
 	UIDropDownMenu_SetSelectedValue (Atr_ASDD_Subclass, 0);
@@ -658,13 +643,13 @@ function Atr_Adv_Search_Do()
 	local itemClassList		= Atr_GetAuctionClasses();
 	local itemSubclassList	= Atr_GetAuctionSubclasses(itemClass);
 
-	
+
 	local searchText = itemClassList[itemClass];
-	
+
 	if (itemSublass > 0) then
 		searchText = searchText.."/"..itemSubclassList[itemSublass];
 	end
-	
+
 	local minLevel	= Atr_AS_Minlevel:GetNumber ();
 	local maxLevel	= Atr_AS_Maxlevel:GetNumber ();
 	local text		= Atr_AS_Searchtext:GetText();
@@ -672,11 +657,11 @@ function Atr_Adv_Search_Do()
 	if (maxLevel > 0 and minLevel == 0) then
 		minLevel = 1;
 	end
-	
+
 	if (minLevel > 0)	then	searchText = searchText.."/"..minLevel;		end
 	if (maxLevel > 0)	then	searchText = searchText.."/"..maxLevel;		end
 	if (text ~= "")		then	searchText = searchText.."/"..text;			end
-	
+
 	Atr_Search_Box:SetText(searchText);
 
 	Atr_Search_Onclick();

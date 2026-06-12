@@ -1,5 +1,5 @@
 
-local addonName, addonTable = ...; 
+local _, addonTable = ...;
 local zc = addonTable.zc;
 
 
@@ -34,14 +34,14 @@ function ZT (s)
 	if (s == nil or s == "") then
 		return s;
 	end
-	
+
 	if (AtrL) then
 		local s1 = AtrL[s];
-		if (s1 and s1 ~= "" and not zc.StringStartsWith ("XXXXX")) then		
+		if (s1 and s1 ~= "" and not zc.StringStartsWith (s1, "XXXXX")) then
 			return s1;
 		end
 	end
-		
+
 	return s;
 end
 
@@ -56,38 +56,34 @@ end
 
 -----------------------------------------
 
-local testt = {};
 local Atr_excludes = { Cancel=1, Okay=1, Done=1, Close=1 }
 
 -----------------------------------------
 
 local function Atr_LocalizeChildText (frame)
 
-	local child;
 	local subregions = { frame:GetRegions() };
 	for _, child in ipairs(subregions) do
 
 		if  (type (child.GetText) == "function") then
 			local ftext = child:GetText();
 			local fname = tostring(child:GetName());
-			
+
 			if (ftext and ftext ~= "" and not Atr_excludes[ftext] and not zc.StringStartsWith (fname, "AuctionatorEntry")) then
-				testt[ftext] = 1;
 				child:SetText (ZT(ftext));
 			end
 		end
 	end
-	
+
 	local kids = { frame:GetChildren() };
 	for _, child in ipairs(kids) do
-		
+
 		if  (type (child.GetText) == "function") then
 			local ftext = child:GetText();
 			local fname = tostring(child:GetName());
-			
+
 			if (ftext and ftext ~= "" and not Atr_excludes[ftext] and not zc.StringStartsWith (fname, "AuctionatorEntry")) then
-				testt[ftext] = 1;
-				
+
 				if (child:GetObjectType() == "Button") then
 					local oldwid = math.floor(child:GetWidth());
 					child:SetText (ZT(ftext));
@@ -100,11 +96,11 @@ local function Atr_LocalizeChildText (frame)
 				end
 			end
 		end
-			
+
 		if (child:GetObjectType() ~= "Button") then
 			Atr_LocalizeChildText (child);
 		end
-	end			
+	end
 
 end
 
@@ -116,16 +112,16 @@ function Atr_LocalizeFrames ()
 	while frame do
 		local fname		= frame:GetName();
 		local pname		= (frame:GetParent() and frame:GetParent():GetName() or nil);
-		
+
 		local isAuctionatorFrame = (zc.StringStartsWith (fname, "Atr") or zc.StringStartsWith (fname, "Auctionator")) and zc.StringSame (pname, "UIParent");
 		if (fname == "Atr_Main_Panel") then
 			isAuctionatorFrame = true;
 		end
-		
+
 		if ( isAuctionatorFrame ) then
 			Atr_LocalizeChildText (frame);
 		end
-		
+
 		frame = EnumerateFrames(frame)
 	end
 
@@ -167,7 +163,7 @@ function Atr_IsCutGem (itemLink)
 	if (not Atr_IsGem (itemLink)) then
 		return false;
 	end
-	
+
 	local itemID = zc.ItemIDfromLink (itemLink);
 
 	for n = 1, #kUncutGems do
@@ -175,7 +171,7 @@ function Atr_IsCutGem (itemLink)
 			return false;
 		end
 	end
-	
+
 	return true;
 end
 
@@ -210,20 +206,20 @@ function Atr_IsClass (itemLink, class, subclass)
 
 	local itemClass = Atr_ItemType2AuctionClass (itemType);
 	local itemSubClass;
-	
+
 	if (itemClass == class) then
-	
+
 		if (subclass == nil) then
 			return true;
 		end
-	
+
 		itemSubClass = Atr_SubType2AuctionSubclass (itemClass, itemSubType)
 
 		if (subclass == itemSubClass) then
 			return true;
 		end
 	end
-		
+
 	return false;
 end
 
@@ -239,7 +235,7 @@ function Atr_GetAuctionClasses()
 	if (gItemClasses == nil) then
 		gItemClasses = { GetAuctionItemClasses() };
 	end
-	
+
 	return gItemClasses;
 end
 
@@ -250,11 +246,11 @@ function Atr_GetAuctionSubclasses (auctionClass)
 	if (gItemSubClasses == nil) then
 		gItemSubClasses = {};
 	end
-	
+
 	if (gItemSubClasses[auctionClass] == nil) then
 		gItemSubClasses[auctionClass] = { GetAuctionItemSubClasses(auctionClass) };
 	end
-	
+
 	return gItemSubClasses[auctionClass];
 end
 
@@ -263,9 +259,8 @@ end
 function Atr_ItemType2AuctionClass(itemType)
 
 	local itemClasses = Atr_GetAuctionClasses();
-		
+
 	if #itemClasses > 0 then
-	local itemClass;
 		for x, itemClass in pairs(itemClasses) do
 			if (zc.StringSame (itemClass, itemType)) then
 				return x;
@@ -284,7 +279,6 @@ function Atr_SubType2AuctionSubclass(auctionClass, itemSubtype)
 	local subclasses = Atr_GetAuctionSubclasses (auctionClass);
 
 	if #subclasses > 0 then
-	local itemSubClass;
 		for x, itemSubClass in pairs(subclasses) do
 			if (zc.StringSame (itemSubClass, itemSubtype)) then
 				return x;
