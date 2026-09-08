@@ -934,3 +934,41 @@ function zc.tallyPrint (ttable, options)
 
 	zc.msg_yellow ("Total: "..total);
 end
+
+------------------------------------------------
+-- Helper to strip random enchantment suffixes (3.3.5a)
+-- Handles multi-word suffixes (e.g., "of Nature's Wrath")
+------------------------------------------------
+function zc.StripSuffix(itemName, itemLink)
+    if not itemName or itemName == "" then return "" end
+
+    local target = itemLink or itemName
+    local _, _, _, _, _, itemType, _, _, itemEquipLoc = GetItemInfo(target)
+
+    if not itemEquipLoc then
+        return itemName
+    end
+
+    local isGear = (itemEquipLoc ~= "" and itemEquipLoc ~= "INVTYPE_NON_EQUIP")
+    local isEquipClass = (itemType == "Armor" or itemType == "Weapon")
+
+    if isGear and isEquipClass then
+        -- 1. Strip " of the <Word>" (e.g., "of the Whale", "of the Bear")
+        local cleanName = itemName:gsub(" of the [%a']+", "")
+
+        -- 2. Strip multi-word suffixes (e.g., "of Nature's Wrath", "of Shadow Wrath", "of Fiery Wrath")
+        cleanName = cleanName:gsub(" of [%a']+%s+[%a']+", "")
+
+        -- 3. Strip single-word suffixes (e.g., "of Intellect", "of Agility")
+        cleanName = cleanName:gsub(" of [%a']+", "")
+
+        -- Trim whitespace
+        cleanName = cleanName:match("^%s*(.-)%s*$")
+
+        if cleanName and cleanName ~= "" then
+            return cleanName
+        end
+    end
+
+    return itemName
+end
