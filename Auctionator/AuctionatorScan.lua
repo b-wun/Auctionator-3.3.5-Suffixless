@@ -302,7 +302,7 @@ function AtrSearch:AnalyzeResultsPage()
 
 	if (self.current_page == 1 and totalAuctions > 3000) then -- give Blizz servers a break
 		Atr_Error_Display (ZT("Too many results\n\nPlease narrow your search"));
-		return true;  -- done
+		return true; -- done
 	end
 
 	if (totalAuctions >= 50) then
@@ -315,30 +315,36 @@ function AtrSearch:AnalyzeResultsPage()
 
 	if (numBatchAuctions > 0) then
 
-
 		for x = 1, numBatchAuctions do
 
 			local name, texture, count, _, _, _, _, _, buyoutPrice, _, _, owner = GetAuctionItemInfo("list", x);
+
+			-- Strip random suffix so all variants group under the base item name
+			if (name) then
+				name = zc.StripSuffix(name);
+			end
 
 			if (owner == nil) then
 				numNilOwners = numNilOwners + 1;
 			end
 
-			local exactMatch = zc.StringSame (name, self.searchText);
+			-- Strip suffix from search text to ensure exact matches register correctly
+			local cleanSearchText = zc.StripSuffix(self.searchText);
+			local exactMatch = zc.StringSame (name, cleanSearchText);
 
 			if (exactMatch or not self.exact) then
 
 				if (self.items[name] == nil) then
 					self.items[name] = Atr_FindScanAndInit (name);
-                    self.items[name].texture = texture
+					self.items[name].texture = texture
 				end
-                if self.items[name].texture and texture ~= self.items[name].texture then
-                    name = name .. " "
-                    if (self.items[name] == nil) then
-                        self.items[name] = Atr_FindScanAndInit (name);
-                        self.items[name].texture = texture
-                    end
-                end
+				if self.items[name].texture and texture ~= self.items[name].texture then
+					name = name .. " "
+					if (self.items[name] == nil) then
+						self.items[name] = Atr_FindScanAndInit (name);
+						self.items[name].texture = texture
+					end
+				end
 
 				local curpage = (tonumber(self.current_page)-1);
 
@@ -1028,7 +1034,7 @@ function Atr_FullScanStart()
 		Atr_FullScanDone:Disable();
 
 		gAtr_FullScanStart = time();
-		gAtr_FullScanDur   = nil;
+		gAtr_FullScanDur   = 0;
 		gAtr_FullScanTimedOut = false;
 		gAtr_FullScanStopReason = nil;
 
@@ -1086,8 +1092,9 @@ local gScanDetails = {}
 
 function Atr_FullScanMoreDetails ()
 
-	local minutes = math.floor (gAtr_FullScanDur/60);
-	local seconds = gAtr_FullScanDur - (minutes * 60);
+	local fullScanDur = gAtr_FullScanDur or 0;
+	local minutes = math.floor (fullScanDur/60);
+	local seconds = fullScanDur - (minutes * 60);
 
 	zc.msg (" ");
 	zc.msg_atr (string.format ("Scan complete (%d:%02d)", minutes, seconds));
@@ -1109,7 +1116,6 @@ function Atr_FullScanMoreDetails ()
 	zc.msg_atr (ZT("Items ignored")..": |cffffffff", gScanDetails.totalItems - (gScanDetails.gNumAdded + gScanDetails.gNumUpdated));
 	zc.msg (" ");
 end
-
 -----------------------------------------
 
 function Atr_FullScanAnalyze()
@@ -1131,14 +1137,18 @@ function Atr_FullScanAnalyze()
 		for x = 1, numBatchAuctions do
 
 			local name, _, count, quality, _, _, _, _, buyoutPrice = GetAuctionItemInfo("list", x);
+			local itemLink = GetAuctionItemLink("list", x);
 
 			if (name ~= nil and buyoutPrice ~= nil) then
 
-                if gAtr_MeanDB[name] == nil then
-                    gAtr_MeanDB[name] = {};
-                end
+				-- Pass itemLink so GetItemInfo resolves equip locations reliably on uncached items
+				name = zc.StripSuffix(name, itemLink);
 
-                qualities[name] = quality;
+				if gAtr_MeanDB[name] == nil then
+					gAtr_MeanDB[name] = {};
+				end
+
+				qualities[name] = quality;
 
 				local itemPrice = math.floor (buyoutPrice / count);
 
@@ -1175,7 +1185,7 @@ function Atr_FullScanAnalyze()
 			if (qx < AUCTIONATOR_SCAN_MINLEVEL and gAtr_ScanDB[name]) then
 				numRemoved[qx] = numRemoved[qx] + 1;
 				gAtr_ScanDB[name] = nil;
-				zc.md ("removed: |cffbbbbbb", name, "   ("..qx..")");
+				zc.md ("removed: |cffbbbbbb", name, "    ("..qx..")");
 			end
 
 			if (qx >= AUCTIONATOR_SCAN_MINLEVEL) then
@@ -1187,19 +1197,19 @@ function Atr_FullScanAnalyze()
 				end
 
 				gAtr_ScanDB[name] = newprice;
-                if #gAtr_MeanDB[name] < 15 then
-                    table.insert(gAtr_MeanDB[name], newprice)
-                else
-                    table.remove(gAtr_MeanDB[name], math.random(1, #gAtr_MeanDB[name]))
-                    table.insert(gAtr_MeanDB[name], newprice)
-                end
+				if #gAtr_MeanDB[name] < 15 then
+					table.insert(gAtr_MeanDB[name], newprice)
+				else
+					table.remove(gAtr_MeanDB[name], math.random(1, #gAtr_MeanDB[name]))
+					table.insert(gAtr_MeanDB[name], newprice)
+				end
 			end
 		end
 	end
 
-    for name in pairs(gAtr_MeanDB) do
-        table.sort(gAtr_MeanDB[name])
-    end
+	for name in pairs(gAtr_MeanDB) do
+		table.sort(gAtr_MeanDB[name])
+	end
 
 	gScanDetails.numBatchAuctions		= numBatchAuctions;
 	gScanDetails.totalItems				= totalItems;
@@ -1334,11 +1344,10 @@ end
 -----------------------------------------
 
 function Atr_FullScan_GetDurString()
-
-	local minutes = math.floor (gAtr_FullScanDur/60);
-	local seconds = gAtr_FullScanDur - (minutes * 60);
-
-	return string.format ("%d:%02d", minutes, seconds);
+	local dur = gAtr_FullScanDur or 0;
+	local minutes = math.floor(dur / 60);
+	local seconds = dur - (minutes * 60);
+	return string.format("%d:%02d", minutes, seconds);
 end
 
 -----------------------------------------
