@@ -316,13 +316,24 @@
 				</FontString>
 
 				<FontString name="Atr_Recommend_Text" inherits="GameFontNormal" text="Recommended buyout price">
-					<Anchors><Anchor point="TOPLEFT"><Offset><AbsDimension x="77" y="-98"/></Offset></Anchor></Anchors>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset>
+								<AbsDimension x="77" y="-80"/>
+							</Offset>
+						</Anchor>
+					</Anchors>
 				</FontString>
 
 				<FontString name="Atr_Recommend_Basis_Text" inherits="GameFontHighlightSmall" text="based on">
-					<Anchors><Anchor point="LEFT" relativePoint="RIGHT" relativeTo="Atr_Recommend_Text"><Offset><AbsDimension x="20" y="-2"/></Offset></Anchor></Anchors>
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="RIGHT" relativeTo="Atr_Recommend_Text">
+							<Offset>
+								<AbsDimension x="20" y="-2"/>
+							</Offset>
+						</Anchor>
+					</Anchors>
 				</FontString>
-
 				<FontString name="Atr_RecommendPerStack_Text" inherits="GameFontHighlightSmall" text="per stack">
 					<Anchors><Anchor point="TOPLEFT" relativeTo="Atr_Recommend_Text"><Offset><AbsDimension x="152" y="-28"/></Offset></Anchor></Anchors>
 				</FontString>
