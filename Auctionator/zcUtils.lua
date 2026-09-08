@@ -945,14 +945,13 @@ function zc.StripSuffix(itemName, itemLink)
     local target = itemLink or itemName
     local _, _, _, _, _, itemType, _, _, itemEquipLoc = GetItemInfo(target)
 
-    if not itemEquipLoc then
-        return itemName
+    -- If item info is available, verify it's gear; otherwise assume true if " of " pattern exists
+    local isGear = true
+    if itemEquipLoc then
+        isGear = (itemEquipLoc ~= "" and itemEquipLoc ~= "INVTYPE_NON_EQUIP") and (itemType == "Armor" or itemType == "Weapon")
     end
 
-    local isGear = (itemEquipLoc ~= "" and itemEquipLoc ~= "INVTYPE_NON_EQUIP")
-    local isEquipClass = (itemType == "Armor" or itemType == "Weapon")
-
-    if isGear and isEquipClass then
+    if isGear then
         -- 1. Strip " of the <Word>" (e.g., "of the Whale", "of the Bear")
         local cleanName = itemName:gsub(" of the [%a']+", "")
 
