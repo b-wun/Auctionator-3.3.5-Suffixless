@@ -843,8 +843,6 @@ function Atr_GetSellItemInfo ()
 
 	local auctionItemLink = nil;
 
-	-- only way to get sell itemlink that I can figure
-
 	if (auctionItemName ~= "") then
 		AtrScanningTooltip:SetAuctionSellItem();
 		auctionItemLink = select(2, AtrScanningTooltip:GetItem());
@@ -854,13 +852,11 @@ function Atr_GetSellItemInfo ()
 		else
 			Atr_AddToItemLinkCache (auctionItemName, auctionItemLink);
 		end
-
 	end
 
 	return auctionItemName, auctionCount, auctionItemLink;
 
 end
-
 
 -----------------------------------------
 
@@ -1327,7 +1323,9 @@ local function Atr_LoadBagSlotToSellPane(bagID, slotID)
     -- Update toggle label and force an immediate UI refresh so pricing fields appear
     if (Atr_SellBrowser_Toggle) then Atr_SellBrowser_Toggle:SetText("Back"); end
     if (gSellPane) then gSellPane.UINeedsUpdate = true; end
-    Atr_UpdateUI();
+    if (Atr_UpdateUI_ForPane) then
+        Atr_UpdateUI_ForPane();
+    end
 end
 
 local function Atr_SB_Item_OnEnter(self)
@@ -1995,13 +1993,22 @@ function Atr_OnSearchComplete ()
 
 	Atr_CheckingActive_OnSearchComplete();
 
-    -- Ensure results list is scrolled to the top so new results are visible without user interaction
-    if (AuctionatorScrollFrame and AuctionatorScrollFrameScrollBar and AuctionatorScrollFrameScrollBar.SetValue) then
-        FauxScrollFrame_SetOffset(AuctionatorScrollFrame, 0);
-        AuctionatorScrollFrameScrollBar:SetValue(0);
-    end
+    Atr_CheckingActive_OnSearchComplete();
 
-    gCurrentPane.UINeedsUpdate = true;
+	-- Ensure results list is scrolled to the top so new results are visible without user interaction
+	if (AuctionatorScrollFrame and AuctionatorScrollFrameScrollBar and AuctionatorScrollFrameScrollBar.SetValue) then
+		FauxScrollFrame_SetOffset(AuctionatorScrollFrame, 0);
+		AuctionatorScrollFrameScrollBar:SetValue(0);
+	end
+
+	gCurrentPane.UINeedsUpdate = true;
+
+	-- FORCE REDRAW: Trigger display rebuild on completed search
+	if (gCurrentPane:ShowCurrent()) then
+		Atr_ShowCurrentAuctions();
+	elseif (gCurrentPane:ShowHints()) then
+		Atr_ShowHints();
+	end
 
 end
 
@@ -2073,22 +2080,14 @@ function Atr_ShowItemNameAndTexture(itemName)
 	AuctionatorMessageFrame:Hide();
 	AuctionatorMessage2Frame:Hide();
 
-	local scn = gCurrentPane.activeScan;
-
-	local color = "";
-	if (scn and not scn:IsNil()) then
-		color = "|cff"..zc.RGBtoHEX (scn.itemTextColor[1], scn.itemTextColor[2], scn.itemTextColor[3]);
-		itemName = scn.itemName;
+	if (Atr_RecommendItem_Tex) then
+		Atr_RecommendItem_Tex:Hide();
+	end
+	if (Atr_Recommend_Text) then
+		Atr_Recommend_Text:Hide();
 	end
 
-	Atr_Recommend_Text:Show ();
-	Atr_Recommend_Text:SetText (color..itemName);
-
-	Atr_SetTextureButton ("Atr_RecommendItem_Tex", 1, gCurrentPane.activeScan.itemLink);
 end
-
-
-
 -----------------------------------------
 
 function Atr_SortHistoryData (x, y)
@@ -2551,16 +2550,28 @@ end
 
 function Atr_SetTextureButton (elementName, count, itemlink)
 
+	-- Intercept only the recommended price icon and keep it permanently hidden
+	if (elementName == "Atr_RecommendItem_Tex") then
+		local recTex = _G["Atr_RecommendItem_Tex"];
+		if (recTex) then recTex:Hide(); end
+		return;
+	end
+
 	local texture = GetItemIcon (itemlink);
 
 	local textureElement = _G[elementName];
 
-	if (texture) then
-		textureElement:Show();
-		textureElement:SetNormalTexture (texture);
-		Atr_SetTextureButtonCount (elementName, count);
-	else
-		Atr_SetTextureButtonCount (elementName, 0);
+	if (textureElement) then
+		-- Attach itemlink directly to the frame object to resolve tooltip cache collisions
+		textureElement.itemLink = itemlink;
+
+		if (texture) then
+			textureElement:Show();
+			textureElement:SetNormalTexture (texture);
+			Atr_SetTextureButtonCount (elementName, count);
+		else
+			Atr_SetTextureButtonCount (elementName, 0);
+		end
 	end
 
 end
@@ -2831,7 +2842,7 @@ function Atr_Idle(_self, _elapsed)
                 s:Finish();
                 Atr_OnSearchComplete ();
                 if (gCurrentPane) then gCurrentPane.UINeedsUpdate = true; end
-                Atr_UpdateUI();
+                if (Atr_UpdateUI_ForPane) then Atr_UpdateUI_ForPane(); end
             end
         end
         -- If waiting to be able to send the first/next query too long (PREQUERY), measure from prequery_when
@@ -2843,13 +2854,15 @@ function Atr_Idle(_self, _elapsed)
                     s:Finish();
                     Atr_OnSearchComplete ();
                     if (gCurrentPane) then gCurrentPane.UINeedsUpdate = true; end
-                    Atr_UpdateUI();
+                    if (Atr_UpdateUI_ForPane) then Atr_UpdateUI_ForPane(); end
                 end
             end
         end
     end
 
-	Atr_UpdateUI ();
+	if (Atr_UpdateUI_ForPane) then
+		Atr_UpdateUI_ForPane();
+	end
 
 	Atr_CheckingActiveIdle();
 
@@ -2877,8 +2890,6 @@ function Atr_OnNewAuctionUpdate()
 		return;
 	end
 
---	zc.md ("gAtr_ClickAuctionSell:", gAtr_ClickAuctionSell);
-
 	gAtr_ClickAuctionSell = false;
 
 	local auctionItemName, auctionCount, auctionLink = Atr_GetSellItemInfo();
@@ -2887,9 +2898,13 @@ function Atr_OnNewAuctionUpdate()
 
 		gPrevSellItemLink = auctionLink;
 
+		local searchName = zc.StripSuffix(auctionItemName);
+
 		if (auctionLink) then
 			gJustPosted_ItemName = nil;
+			-- Store under raw name AND base name so caching matches properly
 			Atr_AddToItemLinkCache (auctionItemName, auctionLink);
+			Atr_AddToItemLinkCache (searchName, auctionLink);
 			Atr_ClearList();		-- better UE
 			gSellPane:SetToShowCurrent();
 		end
@@ -2899,8 +2914,9 @@ function Atr_OnNewAuctionUpdate()
 		Atr_ResetDuration();
 
 		if (gJustPosted_ItemName == nil) then
-			local cacheHit = gSellPane:DoSearch (auctionItemName, true, 20);
+			local cacheHit = gSellPane:DoSearch (searchName, true, 20);
 
+			-- Count inventory using the FULL, exact item name
 			gSellPane.totalItems	= Atr_GetNumItemInBags (auctionItemName);
 			gSellPane.fullStackSize = auctionLink and (select (8, GetItemInfo (auctionLink))) or 0;
 
@@ -2917,10 +2933,32 @@ function Atr_OnNewAuctionUpdate()
 			end
 
 			Atr_SetTextureButton ("Atr_SellControls_Tex", Atr_StackSize(), auctionLink);
-			Atr_SellControls_TexName:SetText (auctionItemName);
+			-- Display the base item name in the Sell UI panel
+			Atr_SellControls_TexName:SetText (searchName);
+
+			-- Bind exact auctionLink to the left Sell slot button's tooltip
+			local sellTexButton = _G["Atr_SellControls_Tex"];
+			if (sellTexButton) then
+				sellTexButton.exactLink = auctionLink;
+				sellTexButton:SetScript("OnEnter", function(self)
+					if (self.exactLink) then
+						GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+						GameTooltip:SetHyperlink(self.exactLink);
+						GameTooltip:Show();
+					end
+				end);
+				sellTexButton:SetScript("OnLeave", function(self)
+					GameTooltip:Hide();
+				end);
+			end
 		else
 			Atr_SetTextureButton ("Atr_SellControls_Tex", 0, nil);
 			Atr_SellControls_TexName:SetText ("");
+
+			local sellTexButton = _G["Atr_SellControls_Tex"];
+			if (sellTexButton) then
+				sellTexButton.exactLink = nil;
+			end
 		end
 
 	elseif (Atr_StackSize() ~= auctionCount) then
@@ -2931,6 +2969,11 @@ function Atr_OnNewAuctionUpdate()
 
 		Atr_SetTextureButton ("Atr_SellControls_Tex", Atr_StackSize(), auctionLink);
 
+		local sellTexButton = _G["Atr_SellControls_Tex"];
+		if (sellTexButton) then
+			sellTexButton.exactLink = auctionLink;
+		end
+
 		Atr_FindBestCurrentAuction();
 		Atr_ResetDuration();
 	end
@@ -2938,85 +2981,11 @@ function Atr_OnNewAuctionUpdate()
 	gSellPane.UINeedsUpdate = true;
 
 end
-
----------------------------------------------------------
-
-function Atr_UpdateUI ()
-
-	local needsUpdate = gCurrentPane.UINeedsUpdate;
-
-	if (gCurrentPane.UINeedsUpdate) then
-
-		gCurrentPane.UINeedsUpdate = false;
-
-		if (Atr_ShowingSearchSummary()) then
-			Atr_ShowSearchSummary();
-		elseif (gCurrentPane:ShowCurrent()) then
-			PanelTemplates_SetTab(Atr_ListTabs, 1);
-			Atr_ShowCurrentAuctions();
-		elseif (gCurrentPane:ShowHistory()) then
-			PanelTemplates_SetTab(Atr_ListTabs, 2);
-			Atr_ShowHistory();
-		else
-			PanelTemplates_SetTab(Atr_ListTabs, 3);
-			Atr_ShowHints();
-		end
-
-		if (gCurrentPane:IsScanEmpty()) then
-			Atr_ListTabs:Hide();
-		else
-			Atr_ListTabs:Show();
-		end
-
-		Atr_SetMessage ("");
-		local scn = gCurrentPane.activeScan;
-
-		if (Atr_IsModeCreateAuction()) then
-
-			Atr_UpdateRecommendation (false);
-		else
-			Atr_HideElems (recommendElements);
-
-			if (scn:IsNil()) then
-				Atr_ShowItemNameAndTexture (gCurrentPane.activeSearch.searchText);
-			else
-				Atr_ShowItemNameAndTexture (gCurrentPane.activeScan.itemName);
-			end
-
-			if (Atr_IsModeBuy()) then
-
-				if (gCurrentPane.activeSearch.searchText == "") then
-					Atr_SetMessage (ZT("Select an item from the list on the left\n or type a search term above to start a scan."));
-				end
-			end
-
-		end
-
-
-		if (Atr_IsTabSelected(BUY_TAB) or (gCurrentPane == gShopPane)) then
-            Atr_Shop_UpdateUI();
-        end
-
-	end
-
-	-- update the hlist if needed
-
-	if (gHlistNeedsUpdate and Atr_IsModeActiveAuctions()) then
-		gHlistNeedsUpdate = false;
-		Atr_DisplayHlist();
-	end
-
-	if (Atr_IsTabSelected(SELL_TAB)) then
-		Atr_UpdateUI_SellPane (needsUpdate);
-	end
-
-end
-
 ---------------------------------------------------------
 
 function Atr_UpdateUI_SellPane (needsUpdate)
 
-	local auctionItemName = GetAuctionSellItemInfo();
+	local auctionItemName, auctionCount, auctionLink = Atr_GetSellItemInfo();
 
 	if (needsUpdate) then
 
@@ -3058,7 +3027,8 @@ function Atr_UpdateUI_SellPane (needsUpdate)
 				Atr_ItemPrice:Hide();
 			end
 
-			Atr_SetTextureButton ("Atr_SellControls_Tex", Atr_StackSize(), Atr_GetItemLink(auctionItemName));
+			-- Use auctionLink directly for accurate icon texture resolution
+			Atr_SetTextureButton ("Atr_SellControls_Tex", Atr_StackSize(), auctionLink);
 
 
 			local maxAuctions = 0;
@@ -3076,7 +3046,11 @@ function Atr_UpdateUI_SellPane (needsUpdate)
 
 			Atr_Recommend_Text:SetText (string.format (ZT("Auction created for %s"), gJustPosted_ItemName));
 			MoneyFrame_Update ("Atr_RecommendPerStack_Price", gJustPosted_BuyoutPrice);
-			Atr_SetTextureButton ("Atr_RecommendItem_Tex", gJustPosted_StackSize, gJustPosted_ItemLink);
+
+			-- Ensure duplicate icon remains hidden post-auction creation
+			if (Atr_RecommendItem_Tex) then
+				Atr_RecommendItem_Tex:Hide();
+			end
 
 			gCurrentPane.currIndex = gCurrentPane.activeScan:FindInSortedData (gJustPosted_StackSize, gJustPosted_BuyoutPrice);
 
