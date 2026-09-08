@@ -1,7 +1,7 @@
 # Auctionator Fixed
 ### _Tested on 3.3.5a (Warmane and Epoch)_
 
-Auctionator is designed for casual everyday auction house users. Auctionator makes the auction house easier to use, by presenting auction house listings clearly and succinctly, and by eliminating the tedium involved in posting and managing auctions.
+Auctionator is designed for casual everyday auction house users. Auctionator makes the auction house easier to use, by presenting auction house listings clearly and succinctly, and by eliminating the tedium involved in posting and managing auctions. Now further customised for AzerothCore servers using the AH Bot Plus module.
 ##### Original author: `Zirco`
 
 ## Installation
@@ -18,14 +18,8 @@ Auctionator is designed for casual everyday auction house users. Auctionator mak
 - Added modern-like "Inventory" section on the "sell" tab
 - Alt-right click to list items from bag (can't do right click because of game limitation) (might not work becauxse of other addons)
 - Fix performance bug when changing zones
-
-## Remaining Issues
-- Fix .xml positions on the sell tab history for visual enhancement (3-4 lines of height required)
-- Fix when listing stacks of items, need to re-open sell tab window
-- Fix lua errors conflicts for some addons/users
-- Fix alt click issue for some users
-
-If anyone wants to do a PR, it would be appreciated although the addon is in a good state now
+- Equipment with "of the X" have that stripped in scans/sell screen for easier auctioning when using https://github.com/NathanHandley/mod-ah-bot-plus (which buys/prices items on the base item ID, without the suffix)
+- Further fixes some minor slowdowns and UI issues
 
 See the screenshot for modern inventory for ultra fast listing
 <img width="1495" height="780" alt="image" src="https://github.com/user-attachments/assets/1ab30eab-9207-44e3-8e23-8865279f25ac" />
