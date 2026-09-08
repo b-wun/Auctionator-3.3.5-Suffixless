@@ -762,6 +762,12 @@ local function ShowTipWithPricing (tip, link, num)
 
 	local itemName, _, itemRarity, itemLevel, _, itemType, _, _, _, _, itemVendorPrice = GetItemInfo (link);
 
+	if (itemName) then
+		itemName = zc.StripSuffix(itemName, link);
+	end
+
+	local itemID = zc.ItemIDfromLink (link);
+
 	local itemID = zc.ItemIDfromLink (link);
 	itemID = tonumber(itemID);
 
