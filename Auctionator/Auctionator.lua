@@ -1116,12 +1116,18 @@ end
 
 function Atr_ClickAuctionSellItemButton (self, button)
 
-	if (AuctionFrameAuctions.duration == nil) then		-- blizz attempts to calculate deposit below and in some cases, duration has yet to be set
+	if (AuctionFrameAuctions and AuctionFrameAuctions.duration == nil) then		-- blizz attempts to calculate deposit below and in some cases, duration has yet to be set
 		AuctionFrameAuctions.duration = 1;
 	end
 
 	gAtr_ClickAuctionSell = true;
-	ClickAuctionSellItemButton(self, button);
+
+	-- Safely handle calls from bag slot imports where self/button aren't passed
+	if (self) then
+		ClickAuctionSellItemButton(self, button);
+	else
+		ClickAuctionSellItemButton();
+	end
 end
 
 
@@ -1174,17 +1180,16 @@ local function Atr_LoadContainerItemToSellPane(slot)
 		gAutoSingleton = time();
 	end
 
-	PickupContainerItem(bagID, slotID);
-
-	local infoType = GetCursorInfo()
-
-	if (infoType == "item") then
-		Atr_ClearAll();
-		Atr_ClickAuctionSellItemButton ();
-		ClearCursor();
+	if (gCurrentPane and gCurrentPane.activeSearch) then
+		gCurrentPane.activeSearch.processing_state = 0;
 	end
 
-	-- After choosing via inventory, keep inventory visible and also show controls
+	ClearCursor();
+	PickupContainerItem(bagID, slotID);
+
+	Atr_ClearAll();
+	Atr_ClickAuctionSellItemButton();
+
 	if (Atr_SellBrowser) then
 		gSB_Visible = true;
 		Atr_SellBrowser:Show();
@@ -1193,10 +1198,8 @@ local function Atr_LoadContainerItemToSellPane(slot)
 		Atr_SellControls:Show();
 	end
 
-	-- Update toggle label and force an immediate UI refresh so pricing fields appear
 	if (Atr_SellBrowser_Toggle) then Atr_SellBrowser_Toggle:SetText("Back"); end
 	if (gSellPane) then gSellPane.UINeedsUpdate = true; end
-	Atr_UpdateUI();
 end
 
 -----------------------------------------
@@ -2883,109 +2886,117 @@ local gPrevSellItemLink;
 
 -----------------------------------------
 
+local Atr_DelayFrame = CreateFrame("Frame");
+
 function Atr_OnNewAuctionUpdate()
 
-	if (not gAtr_ClickAuctionSell) then
-		gPrevSellItemLink = nil;
-		return;
-	end
+	-- Defer execution by 1 render tick so 0ms local server latency catches up
+	Atr_DelayFrame:SetScript("OnUpdate", function(self)
+		self:SetScript("OnUpdate", nil);
 
-	gAtr_ClickAuctionSell = false;
+		local auctionItemName, auctionCount, auctionLink = Atr_GetSellItemInfo();
 
-	local auctionItemName, auctionCount, auctionLink = Atr_GetSellItemInfo();
-
-	if (gPrevSellItemLink ~= auctionLink) then
-
-		gPrevSellItemLink = auctionLink;
-
-		local searchName = zc.StripSuffix(auctionItemName);
-
-		if (auctionLink) then
-			gJustPosted_ItemName = nil;
-			-- Store under raw name AND base name so caching matches properly
-			Atr_AddToItemLinkCache (auctionItemName, auctionLink);
-			Atr_AddToItemLinkCache (searchName, auctionLink);
-			Atr_ClearList();		-- better UE
-			gSellPane:SetToShowCurrent();
+		if (not auctionItemName or auctionItemName == "") then
+			gAtr_ClickAuctionSell = false;
+			gPrevSellItemLink = nil;
+			return;
 		end
 
-		MoneyInputFrame_SetCopper (Atr_StackPrice, 0);
-		MoneyInputFrame_SetCopper (Atr_StartingPrice,  0);
-		Atr_ResetDuration();
+		gAtr_ClickAuctionSell = false;
 
-		if (gJustPosted_ItemName == nil) then
-			local cacheHit = gSellPane:DoSearch (searchName, true, 20);
+		if (gPrevSellItemLink ~= auctionLink) then
 
-			-- Count inventory using the FULL, exact item name
-			gSellPane.totalItems	= Atr_GetNumItemInBags (auctionItemName);
-			gSellPane.fullStackSize = auctionLink and (select (8, GetItemInfo (auctionLink))) or 0;
+			gPrevSellItemLink = auctionLink;
+
+			local searchName = zc.StripSuffix(auctionItemName);
+
+			if (auctionLink) then
+				gJustPosted_ItemName = nil;
+				Atr_AddToItemLinkCache (auctionItemName, auctionLink);
+				Atr_AddToItemLinkCache (searchName, auctionLink);
+				Atr_ClearList();
+				gSellPane:SetToShowCurrent();
+			end
+
+			MoneyInputFrame_SetCopper (Atr_StackPrice, 0);
+			MoneyInputFrame_SetCopper (Atr_StartingPrice, 0);
+			Atr_ResetDuration();
+
+			if (gJustPosted_ItemName == nil) then
+				local cacheHit = gSellPane:DoSearch (searchName, true, 20);
+
+				gSellPane.totalItems    = Atr_GetNumItemInBags (auctionItemName);
+				gSellPane.fullStackSize = auctionLink and (select (8, GetItemInfo (auctionLink))) or 0;
+
+				local prefNumStacks, prefStackSize = Atr_GetSellStacking (auctionLink, auctionCount, gSellPane.totalItems);
+
+				if (time() - gAutoSingleton < 5) then
+					Atr_SetInitialStacking (1, 1);
+				else
+					Atr_SetInitialStacking (prefNumStacks, prefStackSize);
+				end
+
+				if (cacheHit) then
+					Atr_OnSearchComplete ();
+				end
+
+				Atr_SetTextureButton ("Atr_SellControls_Tex", Atr_StackSize(), auctionLink);
+				Atr_SellControls_TexName:SetText (searchName);
+
+				local sellTexButton = _G["Atr_SellControls_Tex"];
+				if (sellTexButton) then
+					sellTexButton.exactLink = auctionLink;
+					sellTexButton:SetScript("OnEnter", function(self)
+						if (self.exactLink) then
+							GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+							GameTooltip:SetHyperlink(self.exactLink);
+							GameTooltip:Show();
+						end
+					end);
+					sellTexButton:SetScript("OnLeave", function(self)
+						GameTooltip:Hide();
+					end);
+				end
+			else
+				Atr_SetTextureButton ("Atr_SellControls_Tex", 0, nil);
+				Atr_SellControls_TexName:SetText ("");
+
+				local sellTexButton = _G["Atr_SellControls_Tex"];
+				if (sellTexButton) then
+					sellTexButton.exactLink = nil;
+				end
+			end
+
+		elseif (Atr_StackSize() ~= auctionCount) then
 
 			local prefNumStacks, prefStackSize = Atr_GetSellStacking (auctionLink, auctionCount, gSellPane.totalItems);
 
-			if (time() - gAutoSingleton < 5) then
-				Atr_SetInitialStacking (1, 1);
-			else
-				Atr_SetInitialStacking (prefNumStacks, prefStackSize);
-			end
-
-			if (cacheHit) then
-				Atr_OnSearchComplete ();
-			end
+			Atr_SetInitialStacking (prefNumStacks, prefStackSize);
 
 			Atr_SetTextureButton ("Atr_SellControls_Tex", Atr_StackSize(), auctionLink);
-			-- Display the base item name in the Sell UI panel
-			Atr_SellControls_TexName:SetText (searchName);
 
-			-- Bind exact auctionLink to the left Sell slot button's tooltip
 			local sellTexButton = _G["Atr_SellControls_Tex"];
 			if (sellTexButton) then
 				sellTexButton.exactLink = auctionLink;
-				sellTexButton:SetScript("OnEnter", function(self)
-					if (self.exactLink) then
-						GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
-						GameTooltip:SetHyperlink(self.exactLink);
-						GameTooltip:Show();
-					end
-				end);
-				sellTexButton:SetScript("OnLeave", function(self)
-					GameTooltip:Hide();
-				end);
 			end
-		else
-			Atr_SetTextureButton ("Atr_SellControls_Tex", 0, nil);
-			Atr_SellControls_TexName:SetText ("");
 
-			local sellTexButton = _G["Atr_SellControls_Tex"];
-			if (sellTexButton) then
-				sellTexButton.exactLink = nil;
-			end
+			Atr_FindBestCurrentAuction();
+			Atr_ResetDuration();
 		end
 
-	elseif (Atr_StackSize() ~= auctionCount) then
-
-		local prefNumStacks, prefStackSize = Atr_GetSellStacking (auctionLink, auctionCount, gSellPane.totalItems);
-
-		Atr_SetInitialStacking (prefNumStacks, prefStackSize);
-
-		Atr_SetTextureButton ("Atr_SellControls_Tex", Atr_StackSize(), auctionLink);
-
-		local sellTexButton = _G["Atr_SellControls_Tex"];
-		if (sellTexButton) then
-			sellTexButton.exactLink = auctionLink;
-		end
-
-		Atr_FindBestCurrentAuction();
-		Atr_ResetDuration();
-	end
-
-	gSellPane.UINeedsUpdate = true;
-
+		gSellPane.UINeedsUpdate = true;
+	end);
 end
----------------------------------------------------------
 
+---------------------------------------------------------
 function Atr_UpdateUI_SellPane (needsUpdate)
 
 	local auctionItemName, auctionCount, auctionLink = Atr_GetSellItemInfo();
+
+	-- Fallback: If auctionItemName is nil, attempt to retrieve it directly from the link
+	if (not auctionItemName and auctionLink) then
+		auctionItemName = GetItemInfo(auctionLink);
+	end
 
 	if (needsUpdate) then
 
@@ -3065,16 +3076,25 @@ function Atr_UpdateUI_SellPane (needsUpdate)
 		end
 	end
 
-	-- stuff we should do every time (not just when needsUpdate is true)
+-- stuff we should do every time (not just when needsUpdate is true)
 
 	local start		= MoneyInputFrame_GetCopper(Atr_StartingPrice);
 	local buyout	= MoneyInputFrame_GetCopper(Atr_StackPrice);
 
-	local pricesOK	= (start > 0 and (start <= buyout or buyout == 0) and (auctionItemName ~= nil));
+	if (not auctionItemName) then
+		auctionItemName = Atr_GetSellItemInfo();
+	end
 
-	local numToSell = Atr_Batch_NumAuctions:GetNumber() * Atr_Batch_Stacksize:GetNumber();
+	local pricesOK	= (start > 0 and (start <= buyout or buyout == 0) and (auctionItemName ~= nil and auctionItemName ~= ""));
 
-	zc.EnableDisable (Atr_CreateAuctionButton,	pricesOK and (numToSell <= gCurrentPane.totalItems));
+	-- Fallbacks for NumAuctions and StackSize if drag-and-drop / Alt+Right Click didn't populate inputs yet
+	local numAuctions = (Atr_Batch_NumAuctions and Atr_Batch_NumAuctions:GetNumber() > 0) and Atr_Batch_NumAuctions:GetNumber() or 1;
+	local stackSize   = (Atr_Batch_Stacksize and Atr_Batch_Stacksize:GetNumber() > 0) and Atr_Batch_Stacksize:GetNumber() or 1;
+
+	local numToSell = numAuctions * stackSize;
+	local totalItemsAvailable = (gCurrentPane and gCurrentPane.totalItems and gCurrentPane.totalItems > 0) and gCurrentPane.totalItems or (auctionCount or 1);
+
+	zc.EnableDisable (Atr_CreateAuctionButton, pricesOK and (numToSell <= totalItemsAvailable));
 
 end
 
